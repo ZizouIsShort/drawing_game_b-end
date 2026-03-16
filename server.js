@@ -1,9 +1,14 @@
-const express = require("express");
-const http = require("http");
-const { Server } = require("socket.io");
-const cors = require("cors");
-const { createServer } = require("http");
-const crypto = require("crypto");
+import express from "express";
+import http from "http";
+import { Server } from "socket.io";
+import cors from "cors";
+import crypto from "crypto";
+import dotenv from "dotenv";
+
+import { db } from "./db/index.js";
+import { strokes } from "./db/schema.js";
+
+dotenv.config();
 
 const app = express();
 
@@ -35,12 +40,21 @@ io.on("connection", function (socket) {
     console.log(msg, socket.id);
     socket.to(room).emit("message", msg);
   });
-  socket.on("draw", ({ room, art }) => {
+  socket.on("draw", async ({ room, art }) => {
     console.log("DRAW EVENT:", art);
     socket.to(room).emit("draw", art);
+    const sent = await db.insert(strokes).values({
+        roomId: room,
+        prevX: art.prevX,
+        prevY: art.prevY,
+        x: art.x,
+        y: art.y,
+        color: art.color,
+        width: art.width
+    })
+    console.log(sent)
   });
 });
-//change test
 
 app.get("/", (req, res) => {
   res.send("Server running");
