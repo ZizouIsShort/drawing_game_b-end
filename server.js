@@ -4,6 +4,7 @@ import { Server } from "socket.io";
 import cors from "cors";
 import crypto from "crypto";
 import dotenv from "dotenv";
+import { sql } from "drizzle-orm";
 
 import { db } from "./db/index.js";
 import { strokes } from "./db/schema.js";
@@ -32,9 +33,14 @@ app.post("/create", (req, res) => {
 });
 
 io.on("connection", function (socket) {
-  socket.on("join_room", function (room) {
+  socket.on("join_room", async function (room) {
     socket.join(room);
     console.log(`socket ${socket.id} joined room ${room}`);
+    const history = await db.execute(
+      sql`SELECT prev_x, prev_y, x, y, color, width FROM strokes WHERE room_id = ${room} ORDER BY created_at`,
+    );
+    console.log("saending history:", history)
+    socket.emit("drawing_history", history)
   });
   socket.on("chat message", function ({ room, msg }) {
     console.log(msg, socket.id);
@@ -44,15 +50,14 @@ io.on("connection", function (socket) {
     console.log("DRAW EVENT:", art);
     socket.to(room).emit("draw", art);
     const sent = await db.insert(strokes).values({
-        roomId: room,
-        prevX: art.prevX,
-        prevY: art.prevY,
-        x: art.x,
-        y: art.y,
-        color: art.color,
-        width: art.width
-    })
-    console.log(sent)
+      roomId: room,
+      prevX: art.prevX,
+      prevY: art.prevY,
+      x: art.x,
+      y: art.y,
+      color: art.color,
+      width: art.width,
+    });
   });
 });
 
