@@ -39,12 +39,16 @@ io.on("connection", function (socket) {
     const history = await db.execute(
       sql`SELECT prev_x, prev_y, x, y, color, width FROM strokes WHERE room_id = ${room} ORDER BY created_at`,
     );
-    console.log("saending history:", history)
+    console.log("sending history:", history)
     socket.emit("drawing_history", history)
   });
-  socket.on("chat message", function ({ room, msg }) {
+  socket.on("chat message", async function ({ room, msg }) {
     console.log(msg, socket.id);
     socket.to(room).emit("message", msg);
+    const mhistory = await db.execute(
+      sql`INSERT INTO messages (room_id, message) VALUES (${room}, ${msg})`
+    )
+    console.log(mhistory)
   });
   socket.on("draw", async ({ room, art }) => {
     console.log("DRAW EVENT:", art);
